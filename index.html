@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Platzi API</title>
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/css/bootstrap.min.css"
+      integrity="sha384-B0vP5xmATw1+K9KRQjQERJvTumQW0nPEzvF6L/Z6nronJ3oUOFUFpCjEUQouq2+l"
+      crossorigin="anonymous"
+    />
+  </head>
+  <body class="bg-dark text-white">
+    <div class="container pt-5">
+      <form class="form p-2" onsubmit="getBooks(); return false;">
+        <label for="access_token">Token</label>
+        <div class="input-group">
+          <div class="custom-file">
+            <input 
+              type="text" 
+              class="form-control bg-dark text-secondary my-2" 
+              id="accessToken" 
+              value="eyJhbGciOiJIUzI1NiJ9.MQ.c_c6EThmu2UPNUlq36-9bQ-0xEinTfNqW1S5rLAUEHU"/>
+          </div>
+          <div class="input-group-append">
+            <button
+              class="btn btn-outline-success"
+              type="submit"
+            >
+              Cargar libros
+            </button>
+          </div>
+        </div>
+      </form>
+
+      <div
+        class="alert my-2"
+        style="opacity: 0; transition: all 0.5s linear"
+        id="messages"
+      >
+        <p></p>
+      </div>
+
+      <table class="table table-dark table-striped" id="booksTable">
+        <thead>
+          <tr>
+            <th scope="col">#</th>
+            <th scope="col">Título</th>
+            <th scope="col">ID autor</th>
+            <th scope="col">ID Género</th>
+            <th scope="col">Acción</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+        <form id="createBook">
+          <tr>
+            <td></td>
+            <td><input type="text" name="title" class="form-control bg-dark text-white" /></td>
+            <td style="max-width: 80px;">
+              <input type="number" name="id_author" class="form-control bg-dark text-white"/>
+            </td>
+            <td style="max-width: 80px;">
+              <input type="number" name="id_genre" class="form-control bg-dark text-white"/>
+            </td>
+            <th>
+              <input
+                type="submit"
+                value="Añadir"
+                class="btn btn-primary btn-block"
+              />
+            </th>
+          </tr>
+        </form>
+      </table>
+    </div>
+
+    <script>
+      const messageElement = document.getElementById("messages");
+
+      function getToken() {
+        const token = document.getElementById("accessToken").value;
+        return token;
+      }
+
+      function setMessage(style, text) {
+        messageElement.classList.add(style);
+        messageElement.innerHTML = text;
+        messageElement.style.opacity = 1;
+        setTimeout(() => {
+          messageElement.classList.remove(style);
+          messageElement.style.opacity = 0;
+        }, 5000);
+      }
+
+      document
+        .getElementById("createBook")
+        .addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const formData = new FormData(e.target);
+          const data = Object.fromEntries(formData.entries());
+
+          const response = await fetch("/books", {
+            body: JSON.stringify(data),
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "X-Token": getToken(),
+            },
+          });
+
+          const json = await response.json();
+
+          if (response.status === 200) {
+            getBooks();
+            setMessage("alert-success", "Entidad creada con éxito!");
+            e.target.reset();
+          } else {
+            setMessage("alert-warning", json.status);
+          }
+        });
+
+      async function deleteBook(idBook) {
+        const response = await fetch(`/books/${idBook}`, {
+          method: "DELETE",
+          headers: {
+            "X-Token": getToken(),
+          },
+        });
+
+        const json = await response.json();
+
+        if (response.status === 200) {
+          getBooks();
+          setMessage("alert-success", "Entidad eliminada con éxito!");
+        } else {
+          setMessage("alert-warning", json.status);
+        }
+      }
+
+      window.onload = () => {
+        getBooks();
+      };
+
+      async function getBooks() {
+        const response = await fetch("/books", {
+          headers: {
+            "x-token": getToken(),
+          },
+        });
+        const data = await response.json();
+
+        if (response.status !== 200) {
+          return setMessage("alert-danger", data.status);
+        }
+
+        const table = document.getElementById("booksTable").childNodes[3];
+        table.innerHTML = "";
+
+        if (data.books) {
+          data.books.forEach((book, bookIndex) => {
+            const trBook = document.createElement("tr");
+
+            const tdId = document.createElement("td");
+            tdId.innerHTML = bookIndex;
+            tdId.className = `book-${bookIndex}`;
+            trBook.appendChild(tdId);
+
+            const tdTitle = document.createElement("td");
+            tdTitle.innerHTML = book.title;
+            tdTitle.className = `book-${bookIndex}`;
+            trBook.appendChild(tdTitle);
+
+            const tdAuthor = document.createElement("td");
+            tdAuthor.innerHTML = book.id_author;
+            tdAuthor.className = `book-${bookIndex}`;
+            trBook.appendChild(tdAuthor);
+
+            const tdGenre = document.createElement("td");
+            tdGenre.innerHTML = book.id_genre;
+            tdGenre.className = `book-${bookIndex}`;
+            trBook.appendChild(tdGenre);
+
+            const tdAction = document.createElement("td");
+
+            const deleteButton = document.createElement("button");
+            deleteButton.className = "btn btn-danger btn-block";
+            deleteButton.innerHTML = "Eliminar";
+            deleteButton.onclick = () => {
+              deleteBook(bookIndex);
+            };
+            tdAction.appendChild(deleteButton);
+            trBook.appendChild(tdAction);
+
+            table.appendChild(trBook);
+          });
+        }
+      }
+    </script>
+  </body>
+</html>
